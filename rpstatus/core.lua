@@ -3,6 +3,7 @@ local addonName, addon = ...
 local RPStatus = CreateFrame("Frame")
 local PREFIX = "RPSTATUS"
 local UPDATE_INTERVAL = 30
+local STATUS_TTL = 35
 
 -- default 
 RPStatusDB = {
@@ -40,6 +41,7 @@ function RPStatus:Init()
         self.updateTimer = self.updateTimer + elapsed
         if self.updateTimer >= UPDATE_INTERVAL then
             self:BroadcastStatus()
+            self:CleanExpiredStatuses()
             self.updateTimer = 0
         end
     end)
@@ -149,7 +151,10 @@ function RPStatus:CHAT_MSG_ADDON(prefix, message, channel, sender)
     
     local status = self:DecodeMessage(message)
     if status then
-        playerStatus[sender] = status
+        playerStatus[sender] = {
+            status = status,
+            timestamp = GetTime()
+        }
         self:UpdateDisplay()
     end
 end
@@ -285,7 +290,7 @@ function RPStatus:UpdateDisplay()
     
     -- Add player entries
     local yOffset = 0
-    for player, status in pairs(playerStatus) do
+    for player, statusData in pairs(playerStatus) do
         local entry = CreateFrame("Button", nil, self.playerList)
         entry:SetSize(170, 20)
         entry:SetPoint("TOPLEFT", self.playerList, "TOPLEFT", 5, -yOffset)
@@ -296,7 +301,7 @@ function RPStatus:UpdateDisplay()
         
         local statusText = entry:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         statusText:SetPoint("RIGHT", entry, "RIGHT", -5, 0)
-        statusText:SetText(status)
+        statusText:SetText(statusData.status)  -- Changed from data.status to statusData.status
         
         -- Add whisper functionality
         entry:SetScript("OnClick", function()
@@ -304,6 +309,28 @@ function RPStatus:UpdateDisplay()
         end)
         
         yOffset = yOffset + 25
+    end
+end
+
+function RPStatus:CleanExpiredStatuses()
+    local currentTime = GetTime()
+    local playersToRemove = {}
+    
+    -- Collect expired players
+    for player, data in pairs(playerStatus) do
+        if currentTime - data.timestamp > STATUS_TTL then
+            table.insert(playersToRemove, player)
+        end
+    end
+    
+    -- Remove expired players
+    for _, player in ipairs(playersToRemove) do
+        playerStatus[player] = nil
+    end
+    
+    -- Update display if any players were removed
+    if #playersToRemove > 0 then
+        self:UpdateDisplay()
     end
 end
 
