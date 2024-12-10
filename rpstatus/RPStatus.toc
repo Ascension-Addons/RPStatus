@@ -1,0 +1,8 @@
+## Interface: 30300
+## Title: RP Status
+## Notes: Track and share RP status with other players
+## Author: Grimundso
+## Version: 1.4
+## SavedVariables: RPStatusDB
+
+core.lua
