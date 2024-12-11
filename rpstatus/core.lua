@@ -129,6 +129,14 @@ function RPStatus:CreateMinimapButton()
     return button
 end
 
+function RPStatus:UpdateMinimapButtonVisibility()
+    if RPStatusDB.minimap.hide then
+        self.minimapButton:Hide()
+    else
+        self.minimapButton:Show()
+    end
+end
+
 -- Event handlers
 function RPStatus:ADDON_LOADED(loadedAddon)
     if loadedAddon ~= addonName then return end
@@ -216,6 +224,17 @@ function RPStatus:CreateMainFrame()
     subtitle:SetText("by Random Encounters")
     subtitle:SetTextColor(0.7, 0.7, 0.7)
     
+    -- setting button
+    local settingsButton = CreateFrame("Button", nil, frame)
+    settingsButton:SetSize(15, 15)
+    settingsButton:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, -10)
+    settingsButton:SetNormalTexture("Interface\\Buttons\\UI-OptionsButton")
+    settingsButton:SetHighlightTexture("Interface\\Buttons\\UI-OptionsButton-Highlight")
+    
+    settingsButton:SetScript("OnClick", function()
+        self:ToggleSettingsFrame()
+    end)
+    
     -- colse button
     local closeButton = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
     closeButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -5, -5)
@@ -233,6 +252,68 @@ function RPStatus:CreateMainFrame()
     
     -- Show/hide 
     if RPStatusDB.minimized then
+        frame:Hide()
+    else
+        frame:Show()
+    end
+end
+
+function RPStatus:CreateSettingsFrame()
+    if self.settingsFrame then
+        return self.settingsFrame
+    end
+
+    local frame = CreateFrame("Frame", "RPStatusSettingsFrame", UIParent)
+    frame:SetSize(250, 150)
+    frame:SetPoint("CENTER")
+    frame:SetMovable(true)
+    frame:EnableMouse(true)
+    frame:RegisterForDrag("LeftButton")
+    
+    frame:SetBackdrop({
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+        tile = true,
+        tileSize = 32,
+        edgeSize = 32,
+        insets = { left = 11, right = 12, top = 12, bottom = 11 }
+    })
+    
+    -- Make it draggable
+    frame:SetScript("OnDragStart", frame.StartMoving)
+    frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
+    
+    -- Title
+    local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    title:SetPoint("TOP", frame, "TOP", 0, -15)
+    title:SetText("RP Status Settings")
+    
+    -- Close button
+    local closeButton = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+    closeButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -5, -5)
+    
+    -- Hide Minimapbox
+    local hideMinimapCheck = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
+    hideMinimapCheck:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -40)
+    hideMinimapCheck:SetChecked(RPStatusDB.minimap.hide)
+    
+    local hideMinimapLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    hideMinimapLabel:SetPoint("LEFT", hideMinimapCheck, "RIGHT", 5, 0)
+    hideMinimapLabel:SetText("Hide Minimap Button")
+    
+    hideMinimapCheck:SetScript("OnClick", function()
+        RPStatusDB.minimap.hide = hideMinimapCheck:GetChecked()
+        RPStatus:UpdateMinimapButtonVisibility()
+    end)
+    
+    frame:Hide()
+    self.settingsFrame = frame
+    return frame
+end
+
+function RPStatus:ToggleSettingsFrame()
+    local frame = self:CreateSettingsFrame()
+    if frame:IsShown() then
         frame:Hide()
     else
         frame:Show()
@@ -268,15 +349,53 @@ function RPStatus:CreateStatusDropdown(parent)
 end
 
 function RPStatus:CreatePlayerList(parent)
-    local list = CreateFrame("ScrollFrame", "RPStatusPlayerList", parent)
-    list:SetPoint("TOP", parent, "TOP", 0, -75)
-    list:SetSize(180, 210)
+    -- Create the main scroll frame
+    local scrollFrame = CreateFrame("ScrollFrame", "RPStatusPlayerList", parent)
+    scrollFrame:SetPoint("TOP", parent, "TOP", 0, -75)
+    scrollFrame:SetSize(180, 210)
     
-    local content = CreateFrame("Frame", nil, list)
+    -- Create the scrollbar
+    local scrollbar = CreateFrame("Slider", nil, scrollFrame, "UIPanelScrollBarTemplate")
+    scrollbar:SetPoint("TOPLEFT", scrollFrame, "TOPRIGHT", 4, -16)
+    scrollbar:SetPoint("BOTTOMLEFT", scrollFrame, "BOTTOMRIGHT", 4, 16)
+    scrollbar:SetMinMaxValues(1, 1)
+    scrollbar:SetValueStep(1)
+    scrollbar.scrollStep = 1
+    
+    -- Create the content frame that will hold our entries
+    local content = CreateFrame("Frame", nil, scrollFrame)
     content:SetSize(180, 210)
-    list:SetScrollChild(content)
+    scrollFrame:SetScrollChild(content)
     
+    -- Background for scroll area
+    local bg = content:CreateTexture(nil, "BACKGROUND")
+    bg:SetAllPoints(true)
+    bg:SetTexture(0, 0, 0, 0.1)
+    
+    -- Store references
     self.playerList = content
+    self.scrollFrame = scrollFrame
+    self.scrollbar = scrollbar
+    
+    -- Scrolling functions
+    scrollbar:SetScript("OnValueChanged", function(self, value)
+        scrollFrame:SetVerticalScroll(value)
+    end)
+    
+    scrollFrame:EnableMouseWheel(true)
+    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
+        local current = scrollbar:GetValue()
+        local min, max = scrollbar:GetMinMaxValues()
+        local step = 30  -- Adjust scroll speed
+        
+        if delta < 0 then
+            local new = math.min(current + step, max)
+            scrollbar:SetValue(new)
+        else
+            local new = math.max(current - step, min)
+            scrollbar:SetValue(new)
+        end
+    end)
 end
 
 function RPStatus:UpdateDisplay()
@@ -290,10 +409,15 @@ function RPStatus:UpdateDisplay()
     
     -- Add player entries
     local yOffset = 0
+    local totalHeight = 0
+    
     for player, statusData in pairs(playerStatus) do
         local entry = CreateFrame("Button", nil, self.playerList)
         entry:SetSize(170, 20)
         entry:SetPoint("TOPLEFT", self.playerList, "TOPLEFT", 5, -yOffset)
+        
+        -- Highlight on mouseover
+        entry:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
         
         local name = entry:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         name:SetPoint("LEFT", entry, "LEFT", 5, 0)
@@ -301,16 +425,79 @@ function RPStatus:UpdateDisplay()
         
         local statusText = entry:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         statusText:SetPoint("RIGHT", entry, "RIGHT", -5, 0)
-        statusText:SetText(statusData.status)  -- Changed from data.status to statusData.status
+        statusText:SetText(statusData.status)
         
         -- Add whisper functionality
         entry:SetScript("OnClick", function()
             ChatFrame_OpenChat("/w " .. player .. " ")
         end)
         
+        -- Add tooltip
+        entry:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(player)
+            GameTooltip:AddLine("Click to whisper", 1, 1, 1)
+            GameTooltip:Show()
+        end)
+        
+        entry:SetScript("OnLeave", function()
+            GameTooltip:Hide()
+        end)
+        
         yOffset = yOffset + 25
+        totalHeight = totalHeight + 25
+    end
+    
+    -- Update content and scroll frame sizes
+    self.playerList:SetHeight(math.max(totalHeight, 210))
+    
+    -- Update scrollbar range
+    local maxScroll = math.max(0, totalHeight - 210)  -- 210 is visible frame height
+    self.scrollbar:SetMinMaxValues(0, maxScroll)
+    
+    -- Show/hide scrollbar based on content
+    if totalHeight > 210 then
+        self.scrollbar:Show()
+    else
+        self.scrollbar:Hide()
     end
 end
+
+function RPStatus:AddTestEntries()
+    -- Clear existing entries
+    playerStatus = {}
+    
+    -- List of possible statuses
+    local statuses = {"Available", "Not Available", "Busy", "Looking for RP"}
+    
+    -- Add some fancy names and random statuses
+    local testPlayers = {
+        "Arthas", "Sylvanas", "Thrall", "Jaina",
+        "Tyrande", "Illidan", "Malfurion", "Varian",
+        "Anduin", "Garrosh", "Vol'jin", "Cairne",
+        "Genn", "Velen", "Lor'themar", "Gallywix",
+        "Nathanos", "Khadgar", "Medivh", "Garona",
+        "Akama", "Chen", "Rexxar", "Muradin",
+        "Magni", "Baine", "Bolvar", "Lilian",
+        "Wrathion", "Alexstrasza", "Ysera", "Nozdormu",
+        "Chromie", "Kalecgos", "Malygos", "Deathwing"
+    }
+    
+    for _, player in ipairs(testPlayers) do
+        -- random status
+        local randomStatus = statuses[math.random(#statuses)]
+        
+        -- Add to table
+        playerStatus[player] = {
+            status = randomStatus,
+            timestamp = GetTime()
+        }
+    end
+    
+    -- Update display
+    self:UpdateDisplay()
+end
+
 
 function RPStatus:CleanExpiredStatuses()
     local currentTime = GetTime()
@@ -334,5 +521,35 @@ function RPStatus:CleanExpiredStatuses()
     end
 end
 
+-- test command
+SLASH_RPSTATUSTEST1 = "/rptest"
+SlashCmdList["RPSTATUSTEST"] = function(msg)
+    RPStatus:AddTestEntries()
+end
+-- commands to toggle
+SLASH_RPSTATUS1 = "/rpstatus"
+SLASH_RPSTATUS2 = "/rps"
+SlashCmdList["RPSTATUS"] = function(msg)
+    msg = msg:lower()
+    if msg == "hide" then
+        RPStatusDB.minimap.hide = true
+        RPStatus:UpdateMinimapButtonVisibility()
+        print("RP Status: Minimap button hidden")
+    elseif msg == "show" then
+        RPStatusDB.minimap.hide = false
+        RPStatus:UpdateMinimapButtonVisibility()
+        print("RP Status: Minimap button shown")
+    elseif msg == "settings" then
+        RPStatus:ToggleSettingsFrame()
+    else
+        -- Toggle main window
+        if RPStatus.mainFrame:IsShown() then
+            RPStatus.mainFrame:Hide()
+        else
+            RPStatus.mainFrame:Show()
+        end
+    end
+end
 -- Initialize the addon
 RPStatus:Init()
+
