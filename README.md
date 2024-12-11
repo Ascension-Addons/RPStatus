@@ -22,6 +22,13 @@ A World of Warcraft 3.3.5 addon that allows players to set and share their rolep
 - Click on a player's name to whisper them
 - Drag the window to reposition it
 - Your settings are saved between sessions
+- Hide the minimapbutton on the settings
+  
+
+
+### Textcommands
+/rps, /rpstatus    = calls the UI
+/rptest            = summons a bunch of testdummies for 30 seconds
 
 ## Commands
 There are currently no slash commands. All functionality is accessed through the UI.
