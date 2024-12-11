@@ -27,8 +27,8 @@ A World of Warcraft 3.3.5 addon that allows players to set and share their rolep
 
 
 ### Textcommands
-/rps, /rpstatus    = calls the UI
-/rptest            = summons a bunch of testdummies for 30 seconds
+- /rps, /rpstatus    = calls the UI
+- /rptest            = summons a bunch of testdummies for 30 seconds
 
 ## Commands
 There are currently no slash commands. All functionality is accessed through the UI.
