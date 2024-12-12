@@ -9,11 +9,16 @@ A World of Warcraft 3.3.5 addon that allows players to set and share their rolep
 - Status persists between sessions
 - Works with guild and party/raid members
 
-## Installation
+## Installation manual
 
 - Download the latest release
 - Extract the rpstatus folder to your World of Warcraft/Interface/AddOns directory
 - Restart World of Warcraft or reload your UI
+
+## Install via Updater
+- Download the lastest release
+- extract the files anywhere you want
+- read the readme and verify the hashes
 
 ## Usage
 
