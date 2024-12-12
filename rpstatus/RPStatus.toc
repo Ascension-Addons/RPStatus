@@ -2,7 +2,14 @@
 ## Title: RP Status
 ## Notes: Track and share RP status with other players
 ## Author: Grimundso
-## Version: 1.4
+## Version: 1.0.5
 ## SavedVariables: RPStatusDB
 
+config.lua
 core.lua
+status.lua
+communication.lua
+ui\frames.lua
+ui\minimap.lua
+ui\playerlist.lua
+commands.lua
