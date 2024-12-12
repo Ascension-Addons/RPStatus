@@ -11,12 +11,12 @@ A World of Warcraft 3.3.5 addon that allows players to set and share their rolep
 
 ## Installation manual
 
-- Download the latest release
+- Download the latest release 
 - Extract the rpstatus folder to your World of Warcraft/Interface/AddOns directory
 - Restart World of Warcraft or reload your UI
 
 ## Install via Updater
-- Download the lastest release
+- Download the lastest release [RPStatus v1.0.5](https://github.com/codexkeeper/RPStatus/releases/tag/v1.0.5)
 - extract the files anywhere you want
 - read the readme and verify the hashes
 
